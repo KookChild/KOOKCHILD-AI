@@ -42,3 +42,9 @@ pip freeze > requirements.txt
 pip install -r requirements.txt
 ```
 현재 없는 패키지만 빠르게 설치할 수 있습니다.
+
+---
+
+현재 사용중 오라클 버전 확인 명령어
+
+![image](https://github.com/KookChild/KOOKCHILD-AI/assets/76734572/80060994-72e6-4771-ba8a-1b581faf207d)
