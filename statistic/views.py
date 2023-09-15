@@ -17,7 +17,7 @@ from datetime import datetime
 '''
 
 
-def graph_api(request):
+def graph_api_parent(request):
     
     '''
     GET 요청에서 파라미터 추출
@@ -35,13 +35,16 @@ def graph_api(request):
     # else : dtype = 'MONTH'
     
     '''
-    쿼리문과 params 설정
+    쿼리문과 params 설정:: account_history_id 는 임의의 데이터라 나중에 삭제해야함
     '''
-    query = "SELECT amount, created_date, category, is_deposit FROM account_history "+ \
-    " WHERE user_id = :childid and id >= :account_history_id " +\
-    "and CREATED_DATE >= :start_date and CREATED_DATE <= :end_date " +\
-    "and is_deposit != 1 " +\
-    "  ORDER BY created_date "
+    query = "SELECT amount, created_date, category, is_deposit"+\
+        "FROM account_history " +\
+        "WHERE user_id = :childid " +\
+        "AND id >= :account_history_id " +\
+        "AND created_date >= :start_date " +\
+        "AND created_date <= :end_date " +\
+        "AND is_deposit != 1 " +\
+        "ORDER BY created_date "
 
 
     params = {
@@ -105,3 +108,19 @@ def graph_api(request):
     return JsonResponse(df, safe=False) # dictionary 바로 json으로 가능
 
     # 이미 필요한 data가 column에 있어서 시리얼 필요없음
+
+
+def graph_api_child(request):
+
+    period = request.GET.get('period') # 2022-09-23~2023-09-11
+    stdt, enddt = map(str, period.split('~'))
+    stdtor = datetime.strptime(stdt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
+    enddtor = datetime.strptime(enddt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
+    
+    dtype = request.GET.get('type') # 1 : year / 2 : month
+
+    data = {
+
+
+    }
+    return JsonResponse(data)
