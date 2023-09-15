@@ -19,7 +19,10 @@ from datetime import datetime
 
 def graph_api(request):
     
-    # GET 요청에서 파라미터 추출
+    '''
+    GET 요청에서 파라미터 추출
+    '''
+
     child_id = request.GET.get('child_id')
 
     period = request.GET.get('period') # 2022-09-23~2023-09-11
@@ -31,100 +34,74 @@ def graph_api(request):
     # if dtype == '1' : dtype = 'YEAR'
     # else : dtype = 'MONTH'
     
+    '''
+    쿼리문과 params 설정
+    '''
     query = "SELECT amount, created_date, category, is_deposit FROM account_history "+ \
     " WHERE user_id = :childid and id >= :account_history_id " +\
     "and CREATED_DATE >= :start_date and CREATED_DATE <= :end_date " +\
     "and is_deposit != 1 " +\
     "  ORDER BY created_date "
+
+
     params = {
-    'childid':child_id,
-    'account_history_id' : '300',
-    'start_date' : stdtor,
-    'end_date' : enddtor
+        'childid':child_id,
+        'account_history_id' : '300',
+        'start_date' : stdtor,
+        'end_date' : enddtor
     }
 
-    # query = "SELECT amount, created_date, category, is_deposit FROM account_history WHERE user_id = %s and id >= %s" 
-    #params = [child_id,200]
 
     cursor = connection.cursor()
-    #with connection.cursor() as cursor:
-        #cursor.execute("select amount, created_date, category,is_deposit from account_history where user_id=22 and id >= 300")
     cursor.execute(sql=query,params=params)
     results = cursor.fetchall()
-    # for r in results: print(r)
 
     
+    '''
+    pandas 처리
+    '''
     columns = [desc[0] for desc in cursor.description]
-    # print(columns)
-
-
-    # pandas 처리
+    
     df = pd.DataFrame(results, columns=columns)
-    # print(df) # 처음 data
-    df.dropna(inplace = True)
+    
+    df.dropna(inplace = True) # null 값 처리 / 실 데이터에는 없을 것이므로 삭제 가능
     df.reset_index(drop=True, inplace = True)
-    df['YEAR']=df['CREATED_DATE'].dt.year
-    df['MONTH']=df['CREATED_DATE'].dt.month
-    df['DAY']=df['CREATED_DATE'].dt.day
-    df['YEAR'] = df['YEAR'].astype(int)
-    df['MONTH'] = df['MONTH'].astype(int)
-    df['DAY'] = df['DAY'].astype(int)
-    df.drop('CREATED_DATE' , axis = 1, inplace = True)
+
+    # 날짜 분해
+    df['YEAR']=df['CREATED_DATE'].dt.year.astype(int)
+    df['MONTH']=df['CREATED_DATE'].dt.month.astype(int)
+    df['DAY']=df['CREATED_DATE'].dt.day.astype(int)
 
 
-    df1 = df.groupby('CATEGORY').agg(SUM_AMOUNT=('AMOUNT', 'sum'), COUNT=('CATEGORY', 'count')).reset_index()
-    df1['SUM_AMOUNT'].sum()
-    df1['SUM_AMOUNT']  = df1['SUM_AMOUNT'] /df1['SUM_AMOUNT'].sum() * 100
-    df1['SUM_AMOUNT'] = df1['SUM_AMOUNT'].round(2)
 
-    # json_data = df1.to_json(orient='list')
+
+    '''
+    dtype에 따라서 yearly, monthly 코드 다르게
+    '''
+
+    df = df.groupby('CATEGORY').agg(SUM_AMOUNT=('AMOUNT', 'sum'), COUNT=('CATEGORY', 'count')).reset_index()
+
+
+
+
+    df['SUM_AMOUNT'].sum()
+    df['PERCENTAGE']  = (df['SUM_AMOUNT'] /df['SUM_AMOUNT'].sum() * 100).round(2)
+    #df.drop(['SUM_AMOUNT','CREATED_DATE'] , axis = 1, inplace = True)
+    df.drop(['SUM_AMOUNT'], axis=1, inplace=True)
+    #df['PERCENTAGE'] = df['PERCENTAGE'].round(2)
+
+    # json_data = df.to_json(orient='list')
     # print(type(json_data))
     # return JsonResponse(json_data,safe=False)
 
 
     # return 해야 하는 pandas. json 파일로 바꿔야 함
-    print(df1)
+    print(df)
     print("========to_dict========")
-    print(df1.to_dict(orient='list'))
-    df1 = df1.to_dict(orient='list')
-    # json_data = open()
-    # json_data = json.dumps( df1, ensure_ascii=False)
+    print(df.to_dict(orient='list'))
+    df = df.to_dict(orient='list')
+    
     print("========json_data========")
-    return JsonResponse(df1, safe=False)
+    return JsonResponse(df, safe=False) # dictionary 바로 json으로 가능
 
     # 이미 필요한 data가 column에 있어서 시리얼 필요없음
-
-    print("========serilaizer========")
-    serializer = DataFrameSerializer(data=df1)#.to_dict(orient='list'))
-    # serializer.is_valid(raise_exception=True)
-    print(serializer)
-
-    return Response(serializer.data)
-
-
-
-
-
-
-
-
-    '''
-    여기서 그래프 pandas 지지고 볶고 하기 쿼리문도 받으면 될듯...? type에 따라서 case 쓰고..? 
-    '''
-    data = {
-        'child_id': child_id,
-        'period': period,
-        'type': dtype,
-        'message': 'API 요청이 성공적으로 처리되었습니다.',
-    }
-    #data = df1.to_json(force_ascii=False, orient='split')
-    # print(data)
-    #data = df1.to_json()
-    print(df1.to_dict(orient='records'))
-
-    with open('data.json', 'w') as json_file:
-        json.dump(result_data, json_file)
-
-
-    cursor.close()
-    return JsonResponse(data)
