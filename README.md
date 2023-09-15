@@ -48,3 +48,13 @@ pip install -r requirements.txt
 현재 사용중 오라클 버전 확인 명령어
 
 ![image](https://github.com/KookChild/KOOKCHILD-AI/assets/76734572/80060994-72e6-4771-ba8a-1b581faf207d)
+
+---
+
+테이블 정보를 그대로 models.py 로 불러오는 명령어
+
+```
+python manage.py inspectdb > bourne_users/models.py
+```
+
+참고 링크: [장고, 오라클연결](https://antilibrary.org/m/700)
