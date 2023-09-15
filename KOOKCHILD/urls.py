@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
+  
+    #path('',admin.site.urls ), # admin 페이지를 기본 페이지로
     path('admin/', admin.site.urls),
     path('management/', include('statistic.urls')),  # manage로 시작하면 statistic app의 urls.py 파일로
 ]
