@@ -10,6 +10,7 @@ from django.db import connection # settings.py 에 있는 DB 랑 연결 됨
 from django.core import serializers
 import pandas as pd
 import json
+from datetime import datetime
 
 '''
 같은 api, 하면 try catch 로 받기? 
@@ -17,23 +18,33 @@ import json
 
 
 def graph_api(request):
-    # print("graph_api")
-    # print(request.method)
+    
     # GET 요청에서 파라미터 추출
     child_id = request.GET.get('child_id')
-    period = request.GET.get('period')
-    dtype = request.GET.get('type')
-    # print(type(child_id))
-    # print(period)
-    # print(dtype)
 
-    '''
-    conn = cx.connect("1234","10.3.3.118:1521/XE") #DB연동
-    cur = conn.cursor()
-    cur.execute("select amount, created_date, category,is_deposit from account_history where user_id=22 and id >= 200")
-    '''
-    query = "SELECT amount, created_date, category,is_deposit FROM account_history WHERE user_id = %s and id >= %s" 
-    params = [child_id,200]
+    period = request.GET.get('period') # 2022-09-23~2023-09-11
+    stdt, enddt = map(str, period.split('~'))
+    stdtor = datetime.strptime(stdt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
+    enddtor = datetime.strptime(enddt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
+    
+    dtype = request.GET.get('type') # 1 : year / 2 : month
+    # if dtype == '1' : dtype = 'YEAR'
+    # else : dtype = 'MONTH'
+    
+    query = "SELECT amount, created_date, category, is_deposit FROM account_history "+ \
+    " WHERE user_id = :childid and id >= :account_history_id " +\
+    "and CREATED_DATE >= :start_date and CREATED_DATE <= :end_date " +\
+    "and is_deposit != 1 " +\
+    "  ORDER BY created_date "
+    params = {
+    'childid':child_id,
+    'account_history_id' : '300',
+    'start_date' : stdtor,
+    'end_date' : enddtor
+    }
+
+    # query = "SELECT amount, created_date, category, is_deposit FROM account_history WHERE user_id = %s and id >= %s" 
+    #params = [child_id,200]
 
     cursor = connection.cursor()
     #with connection.cursor() as cursor:
@@ -42,9 +53,7 @@ def graph_api(request):
     results = cursor.fetchall()
     # for r in results: print(r)
 
-    # # 데이터 처리 또는 API 응답 생성
-    # # 예시로 JsonResponse를 사용하여 응답을 생성합니다.
-    print("connection well done")
+    
     columns = [desc[0] for desc in cursor.description]
     # print(columns)
 
@@ -82,6 +91,8 @@ def graph_api(request):
     # json_data = json.dumps( df1, ensure_ascii=False)
     print("========json_data========")
     return JsonResponse(df1, safe=False)
+
+    # 이미 필요한 data가 column에 있어서 시리얼 필요없음
 
     print("========serilaizer========")
     serializer = DataFrameSerializer(data=df1)#.to_dict(orient='list'))
