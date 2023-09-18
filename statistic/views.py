@@ -219,6 +219,8 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
             month_stack_chart['PERCENTAGE'] = month_stack_chart['PERCENTAGE'].apply(lambda x: f'{x:.2f}')
                
         #month_stack_chart = month_stack_chart.to_dict(orient='list')
+        month_stack_chart['YEAR_MONTH'] = month_stack_chart['YEAR'].astype(str) + '-' + month_stack_chart['MONTH'].astype(str).str.zfill(2)
+        month_stack_chart.drop(['YEAR','MONTH'],axis=1, inplace=True)
         month_stack_chart = month_stack_chart.to_dict(orient='index')
         print("===========stack chart===============")
         for key, value in month_stack_chart.items():
@@ -270,7 +272,13 @@ def graph_api_child(request):
     global child_id
 
     user = request.user # 내 id 가져와야함
+
+    print("user ")
+    print(user.id)
     
+
+
+
 
     
 
