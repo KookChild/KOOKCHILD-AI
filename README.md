@@ -78,8 +78,10 @@ django.db.utils.DatabaseError: ORA-12638: Credential retrieval failed
 - Oracle Home으로 지정한 경로를 찾아 network\admin 폴더로 이동한다. 
 
 (디폴트로 설치 했을 경우 : C:\app\사용자명\product\11.2.0\client_1\network\admin)
-
-2. sqlnet.ora.rooh 파일 수정
+```
+C:\app\student\product\21c\homes\OraDB21Home1\network\admin
+```
+2. sqlnet.ora 파일 수정
 
 sqlnet.ora 파일을 메모장으로 열어서 SQLNET.AUTHENTICATION_SERVICES= (NTS) <- 이부분을 주석처리한다.
 ```
