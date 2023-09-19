@@ -142,6 +142,9 @@ REST_FRAMEWORK = {
     ),
 }
 
+# user 앱에서 내가 설정한 User를 사용하겠다고 설정한다.
+# AUTH_USER_MODEL = 'statistic.Users'
+
 
 REST_AUTH = {
     'LOGIN_SERIALIZER': 'dj_rest_auth.serializers.LoginSerializer',

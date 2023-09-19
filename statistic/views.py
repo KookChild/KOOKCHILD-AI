@@ -11,7 +11,7 @@ from .models import Users
 # @authentication_classes([JWTAuthentication])
 
     
-
+child_id =''
 period = ''
 
 def get_query():
@@ -81,13 +81,20 @@ def get_df(cursor:connection) -> pd:
     columns = [desc[0] for desc in cursor.description]
     data = pd.DataFrame(results, columns=columns)
 
-    
+    #print(data)
     data.dropna(inplace = True) # null 값 처리 / 실 데이터에는 없을 것이므로 삭제 가능
     data.reset_index(drop=True, inplace = True)
     # 날짜 분해
-    data['YEAR']=data['CREATED_DATE'].dt.year.astype(int)
-    data['MONTH']=data['CREATED_DATE'].dt.month.astype(int)
-    data['DAY']=data['CREATED_DATE'].dt.day.astype(int)
+    try:
+        data['YEAR']=data['CREATED_DATE'].dt.year.astype(int)
+        data['MONTH']=data['CREATED_DATE'].dt.month.astype(int)
+        data['DAY']=data['CREATED_DATE'].dt.day.astype(int)
+    except:
+        data['YEAR']=0
+        data['MONTH']=0
+        data['DAY']=0
+        print(data.info())
+    
 
     data.drop('CREATED_DATE', axis=1, inplace=True)
     # print(df)
@@ -253,14 +260,14 @@ def graph_api_parent(request):
     
     # 데이터프레임으로 받기
     df = get_df(cursor=cursor)
-
+    
     # dtype에 따른 pie graph 
     pie_chart = get_pie_chart(df=df, dtype=dtype, isParent = True)
     stack_chart = get_stack_chart(df=df, dtype=dtype, isParent = True)
     return_json['PIE'] = pie_chart
     return_json['STACK'] = stack_chart
-
-    # 소수점 둘쨰자리 보이게
+    
+    cursor.close()
     return JsonResponse(return_json, safe=False)
 
 
@@ -271,10 +278,12 @@ def graph_api_child(request):
     global period
     global child_id
 
-    user = request.user # 내 id 가져와야함
+    user = request.user # 내 id 가져와야함하는데... 
+    '''
+    우리의 DB에는 Users라는 정보가 있고 이게 필요한데... 
+    '''
 
-    print("user ")
-    print(user.id)
+    #print(user.id)
     
 
 
@@ -287,9 +296,10 @@ def graph_api_child(request):
     '''
     GET 요청에서 파라미터 추출
     '''
-    child_id = user.id
+    #child_id = user.id
     #child_id = request.GET.get('child_id')
-    period = request.GET.get('period') # 2022-09-23~2023-09-11
+    child_id = '4'
+    period = request.GET.get('period') # 2022-09-23~2023-03-11
     dtype = int(request.GET.get('type')) # 1 : yearly / 2 : monthly
 
     stdtor, enddtor = get_datetime() # datetime 형태로 시작, 끝 날짜를 받음. oracle 형식으로
