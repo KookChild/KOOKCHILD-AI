@@ -1,7 +1,7 @@
 # KOOKCHILD-AI
 현재 사용 중인 가상환경 python 버전
 
-![image](https://github.com/KookChild/KOOKCHILD-AI/assets/76734572/d791494a-6d23-4ea3-924b-1c255db79d55)
+![image](https://github.com/KookChild/KOOKCHILD-AI/assets/76734572/0d2c6ede-2400-4b89-8639-d7a6dd9cded7)
 
 현재 환경에서 설치한 패키지를 알려주는 명령어
 
