@@ -383,6 +383,6 @@ def graph_api_child(request):
     return_json['PIE'] = pie_chart
     return_json['STACK'] = stack_chart
 
-    get_ratio()
+    
     return JsonResponse(return_json, safe=False)
     
