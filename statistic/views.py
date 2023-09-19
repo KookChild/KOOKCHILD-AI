@@ -5,9 +5,10 @@ from datetime import datetime
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import api_view, authentication_classes,permission_classes
 from rest_framework import permissions
-from rest_framework.response import Response
-from .models import Users
-
+# from rest_framework.response import Response
+# from .models import Users
+import jwt
+from KOOKCHILD.settings import SECRET_KEY
 # @authentication_classes([JWTAuthentication])
 
     
@@ -41,7 +42,6 @@ def get_params(child_id,stdtor,enddtor):
     return params
 
 
-
 def get_year_and_month():
     stdt, enddt = map(str, period.split('~'))
     start_date = datetime.strptime(stdt, '%Y-%m-%d')
@@ -69,9 +69,6 @@ def get_datetime():
     stdtor = datetime.strptime(stdt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
     enddtor = datetime.strptime(enddt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
     return stdtor, enddtor
-
-
-
 
 
 def get_df(cursor:connection) -> pd:
@@ -183,7 +180,6 @@ def get_pie_chart(df:pd, dtype:int,isParent:bool):
         return month_pie_chart
     
 
-
 def get_stack_chart(df:pd, dtype:int,isParent:bool):
     
     if (dtype == 1): # yearly 
@@ -235,7 +231,6 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
         return month_stack_chart
         
 
-
 def graph_api_parent(request):
     global period
 
@@ -275,30 +270,31 @@ def graph_api_parent(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([permissions.IsAuthenticated])
 def graph_api_child(request):
+
+    return_json = {}
+
     global period
     global child_id
 
-    user = request.user # 내 id 가져와야함하는데... 
-    '''
-    우리의 DB에는 Users라는 정보가 있고 이게 필요한데... 
-    '''
+    # 토큰을 가지고 아이 id 가져오기
+    token = request.headers.get('Authorization')
+    token = token.replace('Bearer ', '')
+    user_email = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
 
-    #print(user.id)
-    
+    cursor = connection.cursor()
+    cursor.execute("SELECT id FROM Users where email = :email", {"email" :  user_email['sub']})
+    query_result = cursor.fetchall()
+
+    child_id = query_result[0][0]
+   
 
 
 
-
-    
-
-    return_json = {}
 
     '''
     GET 요청에서 파라미터 추출
     '''
-    #child_id = user.id
-    #child_id = request.GET.get('child_id')
-    child_id = '4'
+
     period = request.GET.get('period') # 2022-09-23~2023-03-11
     dtype = int(request.GET.get('type')) # 1 : yearly / 2 : monthly
 
@@ -321,9 +317,3 @@ def graph_api_child(request):
     return_json['STACK'] = stack_chart
     return JsonResponse(return_json, safe=False)
     
-
-# public String getEmail(Authentication authentication) {
-#         CustomUserDetails principal = (CustomUserDetails)authentication.getPrincipal();
-#         return principal.getEmail();
-#     }
-

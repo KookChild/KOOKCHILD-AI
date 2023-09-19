@@ -19,10 +19,13 @@ class Users(models.Model):
     password = models.CharField(max_length=255, blank=True, null=True)
     phone_num = models.CharField(max_length=255, blank=True, null=True)
     ssn = models.CharField(max_length=255, blank=True, null=True)
-
-    is_anonymous = models.BooleanField()
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['email']
+    
+    
+    
+    # is_authenticated = models.BooleanField()
+    # is_anonymous = models.BooleanField()
+    # USERNAME_FIELD = 'email'
+    # REQUIRED_FIELDS = []
 
     class Meta:
         managed = False

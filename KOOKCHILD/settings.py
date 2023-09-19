@@ -19,8 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9!egz9))frn---4mxxkx)*f-%tgp+^l4$cwve3r7d+sx66ql@5'
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -186,6 +185,8 @@ from datetime import timedelta
 
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_EMAIL_REQUIRED = False
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'x!A%D*G-KaPdSgVkYp3s5v8y/B?E(H+M'
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=100),
