@@ -23,13 +23,24 @@ def get_query():
             "WHERE user_id = :childid " \
             "AND created_date >= :start_date " \
             "AND created_date <= :end_date " \
-            "AND is_deposit != 2" \
-            "AND category != '리워드' " \
+            "AND category not in ('리워드', '적금')  " \
             "ORDER BY created_date "
 
             #  "ORDER BY created_date " 는 없어도 되긴 함
         
         return query
+    
+def get_ratio_query():
+
+
+    query = "SELECT amount, category " \
+        "FROM account_history " \
+        "WHERE user_id = :childid " \
+        "AND category not in ('예금', '리워드', '적금')  " 
+
+        #  "ORDER BY created_date " 는 없어도 되긴 함
+    
+    return query
 
 def get_params(child_id,stdtor,enddtor):
 
@@ -40,6 +51,12 @@ def get_params(child_id,stdtor,enddtor):
     }
 
     return params
+
+def get_year():
+    stdt, enddt = map(str, period.split('~'))
+    
+    result = [ i for i in range(int(stdt[:4]),int(enddt[:4])+1)]
+    return result
 
 
 def get_year_and_month():
@@ -90,7 +107,7 @@ def get_df(cursor:connection) -> pd:
         data['YEAR']=0
         data['MONTH']=0
         data['DAY']=0
-        print(data.info())
+        # print(data.info())
     
 
     data.drop('CREATED_DATE', axis=1, inplace=True)
@@ -123,21 +140,6 @@ def get_pie_chart(df:pd, dtype:int,isParent:bool):
     for key, value in pie_chart.items():
         print(f"{key}: {value}")
     return pie_chart
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -265,6 +267,74 @@ def graph_api_parent(request):
     cursor.close()
     return JsonResponse(return_json, safe=False)
 
+def get_ratio(request):
+    global child_id 
+    child_id = request.GET.get('child_id')
+    return_json = {}
+    cursor = connection.cursor()
+
+
+
+
+
+
+
+    cursor.execute("SELECT birthdate FROM Users where id = :id", {"id" : child_id})
+    birthdate = cursor.fetchone()[0]
+    current_date = datetime.now()
+    age = current_date.year - birthdate.year - ((current_date.month, current_date.day) < (birthdate.month, birthdate.day))
+    print(f"나이: {age}세")
+
+    '''모든 아이들'''
+    
+    cursor.execute("SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드')")
+    query_result = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    all_df = pd.DataFrame(query_result, columns=columns)
+    all_df.dropna(inplace = True)
+    all_df.reset_index(drop=True, inplace = True)
+    sum_df = all_df.groupby(['CATEGORY']).sum().reset_index()
+    # mean_df = all_df.groupby(['CATEGORY']).mean().reset_index()
+    '''특정 자녀'''
+    query = "SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드') and user_id = :child_id" 
+    params = {'child_id': child_id}
+    cursor.execute(query,params)
+    query_result = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    child_df = pd.DataFrame(query_result, columns=columns)
+    child_df.dropna(inplace = True)
+    child_df.reset_index(drop=True, inplace = True)
+    child_sum_df = child_df.groupby(['CATEGORY']).sum().reset_index()
+    child_sum_df['AMOUNT'] =  ( child_sum_df['AMOUNT']*100 / sum_df['AMOUNT']).round(2)
+    child_sum_df['AMOUNT']  = 100 -  child_sum_df['AMOUNT'] # 상위 몇 퍼센트인지 
+    child_sum_df = child_sum_df.sort_values(by=['AMOUNT'], ascending=False).reset_index() # 내림차순으로 정렬
+    child_sum_df.drop(columns=['index'], axis = 1, inplace = True)
+    col = list(child_sum_df.columns)
+    print(f"=========== {child_id} 상위 ===============") # 년도별 월별..?
+    for i in range(child_sum_df.shape[0]):
+        print( str(child_sum_df.iloc[i][col[0]]) + " 항목에서 상위 "+ str(child_sum_df.iloc[i][col[1]])+" % 소비" )
+    
+    child_sum_df = child_sum_df.set_index('CATEGORY')['AMOUNT'].to_dict()#.to_dict(orient='index')
+    print(child_sum_df)
+    cursor.close()
+
+    return_json['MY_DATA'] = child_sum_df
+    return_json['AGE']=age
+    return  JsonResponse( return_json, safe = False)
+
+
+
+
+
+
+
+
+
+
+
+    # return_json['RATIO'] = get_ratio()
+
+    # return JsonResponse(return_json, safe=False)
 
 
 @authentication_classes([JWTAuthentication])
@@ -283,10 +353,7 @@ def graph_api_child(request):
 
     cursor = connection.cursor()
     cursor.execute("SELECT id FROM Users where email = :email", {"email" :  user_email['sub']})
-    query_result = cursor.fetchall()
-
-    child_id = query_result[0][0]
-   
+    child_id = cursor.fetchone()[0]
 
 
 
@@ -315,5 +382,7 @@ def graph_api_child(request):
     stack_chart = get_stack_chart(df=df, dtype=dtype, isParent = False)
     return_json['PIE'] = pie_chart
     return_json['STACK'] = stack_chart
+
+    get_ratio()
     return JsonResponse(return_json, safe=False)
     
