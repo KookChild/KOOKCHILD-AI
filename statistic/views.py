@@ -20,7 +20,7 @@ def get_query():
     query = """
         SELECT amount, created_date, category, is_deposit
         FROM account_history 
-        WHERE user_id = :childid
+        WHERE user_id = :child_id
         AND TO_CHAR(created_date, 'YYYY-MM') BETWEEN :start_date AND :end_date
         AND category not in ('리워드', '적금')
     """
@@ -32,7 +32,8 @@ def get_ratio_query():
 
     query = """SELECT amount, category 
         FROM account_history
-        WHERE user_id = :childid AND category not in ('예금', '리워드', '적금')  
+        WHERE user_id = :child_id AND category not in ('예금', '리워드', '적금')  
+        AND TO_CHAR(created_date, 'YYYY-MM') BETWEEN :start_date AND :end_date
         """
     
     return query
@@ -42,7 +43,7 @@ def get_params(child_id,period):
     stdt, enddt = map(str, period.split('~'))
 
     params = {
-        'childid':child_id,
+        'child_id':child_id,
         'start_date' : stdt,
         'end_date' : enddt
     }
@@ -124,7 +125,7 @@ def get_pie_chart(df:pd, dtype:int,isParent:bool):
     # print("===========pie chart===============")
     # for key, value in pie_chart.items():
     #     print(f"{key}: {value}")
-    return pie_chart
+    return dict(sorted(pie_chart.items()))
 
 
 def get_stack_chart(df:pd, dtype:int,isParent:bool):
@@ -141,9 +142,11 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
             
         # year_stack_chart = year_stack_chart.to_dict(orient='list')
         year_stack_chart = year_stack_chart.to_dict(orient='index')
-        # print("===========stack chart===============")
-        # for key, value in year_stack_chart.items():
-        #      print(f"{key}: {value}")
+        year_stack_chart = dict(sorted(year_stack_chart.items()))
+        print("===========stack chart===============")
+        for key, value in year_stack_chart.items():
+             print(f"{key}: {value}")
+
         return year_stack_chart
     
     elif(dtype == 2): # monthly
@@ -186,13 +189,76 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
         #month_stack_chart = month_stack_chart.to_dict(orient='list')
         month_stack_chart['YEAR'] = month_stack_chart['YEAR'].astype(str) + '-' + month_stack_chart['MONTH'].astype(str).str.zfill(2)
         month_stack_chart.drop(['MONTH'],axis=1, inplace=True)
+
+
         month_stack_chart = month_stack_chart.to_dict(orient='index')
-        # print("===========after dividng stack chart===============")
-        # for key, value in month_stack_chart.items():
-        #     print(f"{key}: {value}")
-        #     pass
+        # month_stack_chart = dict(sorted(month_stack_chart.items()))
+        print("===========stack chart===============")
+        for key, value in month_stack_chart.items():
+            print(f"{key}: {value}")
+
         return month_stack_chart
-        
+
+def get_ratio_chart(request):
+    global child_id 
+    child_id = request.GET.get('child_id')
+    period = request.GET.get('period')
+    return_json = {}
+    cursor = connection.cursor()
+
+
+    cursor.execute("SELECT birthdate FROM Users where id = :id", {"id" : child_id})
+    birthdate = cursor.fetchone()[0]
+    current_date = datetime.now()
+    age = current_date.year - birthdate.year - ((current_date.month, current_date.day) < (birthdate.month, birthdate.day))
+    # print(f"나이: {age}세")
+
+    '''모든 아이들'''
+    
+    cursor.execute("SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드')")
+    query_result = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    all_df = pd.DataFrame(query_result, columns=columns)
+    all_df.dropna(inplace = True)
+    all_df.reset_index(drop=True, inplace = True)
+    sum_df = all_df.groupby(['CATEGORY']).sum().reset_index()
+    # mean_df = all_df.groupby(['CATEGORY']).mean().reset_index()
+    '''특정 자녀'''
+    # query = "SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드') and user_id = :child_id" 
+    # params = {'child_id': child_id}
+    cursor.execute(sql=get_ratio_query(),params= get_params(child_id=child_id,period=period))
+    query_result = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    child_df = pd.DataFrame(query_result, columns=columns)
+    child_df.dropna(inplace = True)
+    child_df.reset_index(drop=True, inplace = True)
+    child_sum_df = child_df.groupby(['CATEGORY']).sum().reset_index()
+    child_sum_df['AMOUNT'] =  ( child_sum_df['AMOUNT']*100 / sum_df['AMOUNT']).round(2)
+    child_sum_df['AMOUNT']  = 100 -  child_sum_df['AMOUNT'] # 상위 몇 퍼센트인지 
+    child_sum_df = child_sum_df.sort_values(by=['AMOUNT'], ascending=False).reset_index() # 내림차순으로 정렬
+    child_sum_df.drop(columns=['index'], axis = 1, inplace = True)
+    col = list(child_sum_df.columns)
+    # print(f"=========== {child_id} 상위 ===============") # 년도별 월별..?
+    # for i in range(child_sum_df.shape[0]):
+    #     print( str(child_sum_df.iloc[i][col[0]]) + " 항목에서 상위 "+ str(child_sum_df.iloc[i][col[1]])+" % 소비" )
+    
+    child_sum_df = child_sum_df.set_index('CATEGORY')['AMOUNT'].to_dict()#.to_dict(orient='index')
+    #print(dict(sorted(child_sum_df.items())))
+    #print(child_sum_df)
+    cursor.close()
+    child_sum_df = dict(sorted(child_sum_df.items()))
+
+    return_json['MY_DATA'] =child_sum_df
+    return_json['AGE']=age
+
+    return  JsonResponse( return_json, safe = False)
+
+  
+
+
+
+
+  
 
 def graph_api_parent(request):
     global period
@@ -226,56 +292,6 @@ def graph_api_parent(request):
     cursor.close()
     return JsonResponse(return_json, safe=False)
 
-
-def get_ratio(request):
-    global child_id 
-    child_id = request.GET.get('child_id')
-    return_json = {}
-    cursor = connection.cursor()
-
-
-    cursor.execute("SELECT birthdate FROM Users where id = :id", {"id" : child_id})
-    birthdate = cursor.fetchone()[0]
-    current_date = datetime.now()
-    age = current_date.year - birthdate.year - ((current_date.month, current_date.day) < (birthdate.month, birthdate.day))
-    # print(f"나이: {age}세")
-
-    '''모든 아이들'''
-    
-    cursor.execute("SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드')")
-    query_result = cursor.fetchall()
-    columns = [desc[0] for desc in cursor.description]
-    all_df = pd.DataFrame(query_result, columns=columns)
-    all_df.dropna(inplace = True)
-    all_df.reset_index(drop=True, inplace = True)
-    sum_df = all_df.groupby(['CATEGORY']).sum().reset_index()
-    # mean_df = all_df.groupby(['CATEGORY']).mean().reset_index()
-    '''특정 자녀'''
-    query = "SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드') and user_id = :child_id" 
-    params = {'child_id': child_id}
-    cursor.execute(query,params)
-    query_result = cursor.fetchall()
-    columns = [desc[0] for desc in cursor.description]
-    child_df = pd.DataFrame(query_result, columns=columns)
-    child_df.dropna(inplace = True)
-    child_df.reset_index(drop=True, inplace = True)
-    child_sum_df = child_df.groupby(['CATEGORY']).sum().reset_index()
-    child_sum_df['AMOUNT'] =  ( child_sum_df['AMOUNT']*100 / sum_df['AMOUNT']).round(2)
-    child_sum_df['AMOUNT']  = 100 -  child_sum_df['AMOUNT'] # 상위 몇 퍼센트인지 
-    child_sum_df = child_sum_df.sort_values(by=['AMOUNT'], ascending=False).reset_index() # 내림차순으로 정렬
-    child_sum_df.drop(columns=['index'], axis = 1, inplace = True)
-    col = list(child_sum_df.columns)
-    # print(f"=========== {child_id} 상위 ===============") # 년도별 월별..?
-    # for i in range(child_sum_df.shape[0]):
-    #     print( str(child_sum_df.iloc[i][col[0]]) + " 항목에서 상위 "+ str(child_sum_df.iloc[i][col[1]])+" % 소비" )
-    
-    child_sum_df = child_sum_df.set_index('CATEGORY')['AMOUNT'].to_dict()#.to_dict(orient='index')
-    #print(child_sum_df)
-    cursor.close()
-
-    return_json['MY_DATA'] = child_sum_df
-    return_json['AGE']=age
-    return  JsonResponse( return_json, safe = False)
 
 
 @authentication_classes([JWTAuthentication])
