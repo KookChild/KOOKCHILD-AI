@@ -132,9 +132,9 @@ def get_pie_chart(df:pd, dtype:int,isParent:bool):
     
     #year_pie_chart = year_pie_chart.to_dict(orient='list')
     pie_chart = pie_chart.to_dict(orient='index')
-    print("===========pie chart===============")
-    for key, value in pie_chart.items():
-        print(f"{key}: {value}")
+    # print("===========pie chart===============")
+    # for key, value in pie_chart.items():
+    #     print(f"{key}: {value}")
     return pie_chart
 
 
@@ -213,19 +213,35 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
         
         month_stack_chart=month_stack_chart.sort_values(by=['YEAR','MONTH']).reset_index(drop = True)
         month_stack_chart['IS_DEPOSIT'] = month_stack_chart['IS_DEPOSIT'].replace({0: '소비', 1: '예금'})
+        print("===========before dividng stack chart===============")
+        print(month_stack_chart)
+        for key, value in month_stack_chart.to_dict(orient='index').items():
+            #print(f"{key}: {value}")
+            pass
 
         if(isParent):
-            month_stack_chart['PERCENTAGE']  = (month_stack_chart['AMOUNT'] /month_stack_chart['AMOUNT'].sum() * 100).round(2)
+            # YEAR, MONTH 및 IS_DEPOSIT로 그룹화하고 AMOUNT의 합을 계산
+            month_stack_chart = month_stack_chart.groupby(['YEAR', 'MONTH', 'IS_DEPOSIT'])['AMOUNT'].sum().reset_index()
+
+            # YEAR 및 MONTH로 그룹화하고 각 IS_DEPOSIT의 AMOUNT 합산값을 가져옴
+            total_amounts = month_stack_chart.groupby(['YEAR', 'MONTH'])['AMOUNT'].transform('sum')
+
+            # AMOUNT를 해당 월의 총 AMOUNT로 나누어 비율을 구함
+            month_stack_chart['PERCENTAGE'] = (month_stack_chart['AMOUNT'] / total_amounts * 100).round(2)
+
+
+            #month_stack_chart['PERCENTAGE']  = (month_stack_chart['AMOUNT'] /month_stack_chart['AMOUNT'].sum() * 100)
             month_stack_chart.drop(['AMOUNT'], axis=1, inplace=True)     
             month_stack_chart['PERCENTAGE'] = month_stack_chart['PERCENTAGE'].apply(lambda x: f'{x:.2f}')
                
         #month_stack_chart = month_stack_chart.to_dict(orient='list')
-        month_stack_chart['YEAR_MONTH'] = month_stack_chart['YEAR'].astype(str) + '-' + month_stack_chart['MONTH'].astype(str).str.zfill(2)
-        month_stack_chart.drop(['YEAR','MONTH'],axis=1, inplace=True)
+        month_stack_chart['YEAR'] = month_stack_chart['YEAR'].astype(str) + '-' + month_stack_chart['MONTH'].astype(str).str.zfill(2)
+        month_stack_chart.drop(['MONTH'],axis=1, inplace=True)
         month_stack_chart = month_stack_chart.to_dict(orient='index')
-        print("===========stack chart===============")
+        print("===========after dividng stack chart===============")
         for key, value in month_stack_chart.items():
-             print(f"{key}: {value}")
+            print(f"{key}: {value}")
+            pass
         return month_stack_chart
         
 
