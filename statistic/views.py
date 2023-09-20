@@ -17,20 +17,18 @@ period = ''
 
 def get_query():
 
-    if (True):
-        query = """
-            SELECT amount, created_date, category, is_deposit
-            FROM account_history 
-            WHERE user_id = :childid
-            AND TO_CHAR(created_date, 'YYYY-MM') BETWEEN :start_date AND :end_date
-            AND category not in ('리워드', '적금')
-        """
+    query = """
+        SELECT amount, created_date, category, is_deposit
+        FROM account_history 
+        WHERE user_id = :childid
+        AND TO_CHAR(created_date, 'YYYY-MM') BETWEEN :start_date AND :end_date
+        AND category not in ('리워드', '적금')
+    """
 
-        
-        return query
-    
+    return query
+
+
 def get_ratio_query():
-
 
     query = """SELECT amount, category 
         FROM account_history
@@ -39,9 +37,9 @@ def get_ratio_query():
     
     return query
 
+
 def get_params(child_id,period):
     stdt, enddt = map(str, period.split('~'))
-
 
     params = {
         'childid':child_id,
@@ -51,9 +49,9 @@ def get_params(child_id,period):
 
     return params
 
+
 def get_year():
     stdt, enddt = map(str, period.split('~'))
-    
     result = [ i for i in range(int(stdt[:4]),int(enddt[:4])+1)]
     return result
 
@@ -80,13 +78,6 @@ def get_year_and_month():
     return result
 
 
-# def get_datetime():
-#     stdt, enddt = map(str, period.split('~'))
-#     stdtor = datetime.strptime(stdt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
-#     enddtor = datetime.strptime(enddt.strip(), '%Y-%m-%d').strftime('%Y-%m-%d %H:%M:%S')
-#     return stdtor, enddtor
-
-
 def get_df(cursor:connection) -> pd:
     
     results = cursor.fetchall()    
@@ -94,7 +85,6 @@ def get_df(cursor:connection) -> pd:
     columns = [desc[0] for desc in cursor.description]
     data = pd.DataFrame(results, columns=columns)
 
-    #print(data)
     data.dropna(inplace = True) # null 값 처리 / 실 데이터에는 없을 것이므로 삭제 가능
     data.reset_index(drop=True, inplace = True)
     # 날짜 분해
@@ -107,7 +97,6 @@ def get_df(cursor:connection) -> pd:
     
 
     data.drop('CREATED_DATE', axis=1, inplace=True)
-    # print(df)
 
     return data
 
@@ -152,9 +141,9 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
             
         # year_stack_chart = year_stack_chart.to_dict(orient='list')
         year_stack_chart = year_stack_chart.to_dict(orient='index')
-        print("===========stack chart===============")
-        for key, value in year_stack_chart.items():
-             print(f"{key}: {value}")
+        # print("===========stack chart===============")
+        # for key, value in year_stack_chart.items():
+        #      print(f"{key}: {value}")
         return year_stack_chart
     
     elif(dtype == 2): # monthly
@@ -173,11 +162,11 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
         
         month_stack_chart=month_stack_chart.sort_values(by=['YEAR','MONTH']).reset_index(drop = True)
         month_stack_chart['IS_DEPOSIT'] = month_stack_chart['IS_DEPOSIT'].replace({0: '소비', 1: '예금'})
-        print("===========before dividng stack chart===============")
-        print(month_stack_chart)
-        for key, value in month_stack_chart.to_dict(orient='index').items():
-            #print(f"{key}: {value}")
-            pass
+        # print("===========before dividng stack chart===============")
+        # print(month_stack_chart)
+        # for key, value in month_stack_chart.to_dict(orient='index').items():
+        #     print(f"{key}: {value}")
+        #     pass
 
         if(isParent):
             # YEAR, MONTH 및 IS_DEPOSIT로 그룹화하고 AMOUNT의 합을 계산
@@ -198,10 +187,10 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
         month_stack_chart['YEAR'] = month_stack_chart['YEAR'].astype(str) + '-' + month_stack_chart['MONTH'].astype(str).str.zfill(2)
         month_stack_chart.drop(['MONTH'],axis=1, inplace=True)
         month_stack_chart = month_stack_chart.to_dict(orient='index')
-        print("===========after dividng stack chart===============")
-        for key, value in month_stack_chart.items():
-            print(f"{key}: {value}")
-            pass
+        # print("===========after dividng stack chart===============")
+        # for key, value in month_stack_chart.items():
+        #     print(f"{key}: {value}")
+        #     pass
         return month_stack_chart
         
 
@@ -218,8 +207,6 @@ def graph_api_parent(request):
     period = request.GET.get('period') # 2022-09-23~2023-09-11
     dtype = int(request.GET.get('type')) # 1 : yearly / 2 : monthly
 
-   
-    
     
     '''
     쿼리문과 params 설정:: account_history_id 는 임의의 데이터라 나중에 삭제해야함
@@ -239,6 +226,7 @@ def graph_api_parent(request):
     cursor.close()
     return JsonResponse(return_json, safe=False)
 
+
 def get_ratio(request):
     global child_id 
     child_id = request.GET.get('child_id')
@@ -250,7 +238,7 @@ def get_ratio(request):
     birthdate = cursor.fetchone()[0]
     current_date = datetime.now()
     age = current_date.year - birthdate.year - ((current_date.month, current_date.day) < (birthdate.month, birthdate.day))
-    print(f"나이: {age}세")
+    # print(f"나이: {age}세")
 
     '''모든 아이들'''
     
@@ -277,9 +265,9 @@ def get_ratio(request):
     child_sum_df = child_sum_df.sort_values(by=['AMOUNT'], ascending=False).reset_index() # 내림차순으로 정렬
     child_sum_df.drop(columns=['index'], axis = 1, inplace = True)
     col = list(child_sum_df.columns)
-    print(f"=========== {child_id} 상위 ===============") # 년도별 월별..?
-    for i in range(child_sum_df.shape[0]):
-        print( str(child_sum_df.iloc[i][col[0]]) + " 항목에서 상위 "+ str(child_sum_df.iloc[i][col[1]])+" % 소비" )
+    # print(f"=========== {child_id} 상위 ===============") # 년도별 월별..?
+    # for i in range(child_sum_df.shape[0]):
+    #     print( str(child_sum_df.iloc[i][col[0]]) + " 항목에서 상위 "+ str(child_sum_df.iloc[i][col[1]])+" % 소비" )
     
     child_sum_df = child_sum_df.set_index('CATEGORY')['AMOUNT'].to_dict()#.to_dict(orient='index')
     #print(child_sum_df)
@@ -288,20 +276,6 @@ def get_ratio(request):
     return_json['MY_DATA'] = child_sum_df
     return_json['AGE']=age
     return  JsonResponse( return_json, safe = False)
-
-
-
-
-
-
-
-
-
-
-
-    # return_json['RATIO'] = get_ratio()
-
-    # return JsonResponse(return_json, safe=False)
 
 
 @authentication_classes([JWTAuthentication])
