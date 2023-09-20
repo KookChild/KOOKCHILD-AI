@@ -306,7 +306,7 @@ def get_ratio(request):
         print( str(child_sum_df.iloc[i][col[0]]) + " 항목에서 상위 "+ str(child_sum_df.iloc[i][col[1]])+" % 소비" )
     
     child_sum_df = child_sum_df.set_index('CATEGORY')['AMOUNT'].to_dict()#.to_dict(orient='index')
-    print(child_sum_df)
+    #print(child_sum_df)
     cursor.close()
 
     return_json['MY_DATA'] = child_sum_df
