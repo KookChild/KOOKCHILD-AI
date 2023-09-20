@@ -138,46 +138,6 @@ def get_pie_chart(df:pd, dtype:int,isParent:bool):
     return pie_chart
 
 
-
-    if(dtype == 1):# 1 : year
-        yearly_grouped = pie_df.groupby('YEAR')
-        year_pie_chart = yearly_grouped.apply(lambda x: x.groupby('CATEGORY').agg({
-            'CATEGORY': 'count',
-            'AMOUNT': 'sum'
-        }).rename(columns={'CATEGORY': 'COUNT'}))
-        year_pie_chart= year_pie_chart.reset_index()
-
-        if(isParent):
-            year_pie_chart['PERCENTAGE']  = (year_pie_chart['AMOUNT'] /year_pie_chart['AMOUNT'].sum() * 100).round(2)
-            year_pie_chart.drop(['AMOUNT'], axis=1, inplace=True)
-            year_pie_chart['PERCENTAGE'] = year_pie_chart['PERCENTAGE'].apply(lambda x: f'{x:.2f}')
-        
-        #year_pie_chart = year_pie_chart.to_dict(orient='list')
-        year_pie_chart = year_pie_chart.to_dict(orient='index')
-        for key, value in year_pie_chart.items():
-            print(f"{key}: {value}")
-        return year_pie_chart
-    
-    elif(dtype == 2): # month
-        mothly_grouped = pie_df.groupby(['YEAR','MONTH'])
-        month_pie_chart = mothly_grouped.apply(lambda x: x.groupby('CATEGORY').agg({
-            'CATEGORY': 'count',
-            'AMOUNT': 'sum'
-        }).rename(columns={'CATEGORY': 'COUNT'}))
-        month_pie_chart = month_pie_chart.reset_index()
-
-        if(isParent):
-            month_pie_chart['PERCENTAGE']  = (month_pie_chart['AMOUNT'] /month_pie_chart['AMOUNT'].sum() * 100).round(2)
-            month_pie_chart.drop(['AMOUNT'], axis=1, inplace=True)
-            month_pie_chart['PERCENTAGE'] = month_pie_chart['PERCENTAGE'].apply(lambda x: f'{x:.2f}')
-        
-        # month_pie_chart = month_pie_chart.to_dict(orient='list')
-        month_pie_chart = month_pie_chart.to_dict(orient='index')
-        for key, value in month_pie_chart.items():
-             print(f"{key}: {value}")
-        return month_pie_chart
-    
-
 def get_stack_chart(df:pd, dtype:int,isParent:bool):
     
     if (dtype == 1): # yearly 
