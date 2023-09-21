@@ -102,8 +102,7 @@ def get_df(cursor:connection) -> pd:
     return data
 
 
-def get_pie_chart(df:pd, dtype:int,isParent:bool):
-    
+def get_pie_chart(df:pd, dtype:int,isParent:bool,child_id:int):
     pie_df = df[df['IS_DEPOSIT']== 0] # 예금이 아닌 값들만 취하기
     pie_df = pie_df.drop('IS_DEPOSIT' , axis = 1).reset_index() # IS_DEPOSIT column 버리기
     
@@ -119,13 +118,27 @@ def get_pie_chart(df:pd, dtype:int,isParent:bool):
         pie_chart['PERCENTAGE']  = (pie_chart['AMOUNT'] /pie_chart['AMOUNT'].sum() * 100).round(2)
         pie_chart.drop(['AMOUNT'], axis=1, inplace=True)
         pie_chart['PERCENTAGE'] = pie_chart['PERCENTAGE'].apply(lambda x: f'{x:.2f}')
-    
+    #pie_chart['CATEGORY'] = pie_chart['CATEGORY'].sort_value()
+    pie_chart = pie_chart.sort_values(by=['CATEGORY'], ascending=True).reset_index() # category 내림차순으로 정렬
+    pie_chart.drop(columns=['index'], axis = 1, inplace = True)
     #year_pie_chart = year_pie_chart.to_dict(orient='list')
+    ratio_chart = get_ratio_chart(child_id)
+    #print(ratio_chart)
+    pie_chart['RATIO'] = ratio_chart#['MY_DATA']
+    print("!!!!!!!!!!!!!!pie_chart!!!!!!!!!!!!!!!!")
+    print(pie_chart)
+
+
+
     pie_chart = pie_chart.to_dict(orient='index')
+    print("==================2=============")
+    print(pie_chart)
+    print("==================3=============")
+    print(dict(sorted(pie_chart.items(), reverse=True)))
     # print("===========pie chart===============")
     # for key, value in pie_chart.items():
     #     print(f"{key}: {value}")
-    return dict(sorted(pie_chart.items()))
+    return dict(sorted(pie_chart.items(), reverse=True))
 
 
 def get_stack_chart(df:pd, dtype:int,isParent:bool):
@@ -142,10 +155,10 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
             
         # year_stack_chart = year_stack_chart.to_dict(orient='list')
         year_stack_chart = year_stack_chart.to_dict(orient='index')
-        year_stack_chart = dict(sorted(year_stack_chart.items()))
-        print("===========stack chart===============")
-        for key, value in year_stack_chart.items():
-             print(f"{key}: {value}")
+        #year_stack_chart = dict(sorted(year_stack_chart.items(), reverse=True))
+        # print("===========stack chart===============")
+        # for key, value in year_stack_chart.items():
+        #      print(f"{key}: {value}")
 
         return year_stack_chart
     
@@ -193,19 +206,19 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
 
         month_stack_chart = month_stack_chart.to_dict(orient='index')
         # month_stack_chart = dict(sorted(month_stack_chart.items()))
-        print("===========stack chart===============")
-        for key, value in month_stack_chart.items():
-            print(f"{key}: {value}")
+        # print("===========stack chart===============")
+        # for key, value in month_stack_chart.items():
+        #     print(f"{key}: {value}")
 
         return month_stack_chart
 
-def get_ratio_chart(request):
-    global child_id 
-    child_id = request.GET.get('child_id')
-    period = request.GET.get('period')
-    return_json = {}
+def get_ratio_chart(child_id):
+    #global child_id 
+    # child_id = request.GET.get('child_id')
+    # period = request.GET.get('period')
+    # return_json = {}
     cursor = connection.cursor()
-
+    print(child_id)
 
     cursor.execute("SELECT birthdate FROM Users where id = :id", {"id" : child_id})
     birthdate = cursor.fetchone()[0]
@@ -233,25 +246,31 @@ def get_ratio_chart(request):
     child_df.dropna(inplace = True)
     child_df.reset_index(drop=True, inplace = True)
     child_sum_df = child_df.groupby(['CATEGORY']).sum().reset_index()
-    child_sum_df['AMOUNT'] =  ( child_sum_df['AMOUNT']*100 / sum_df['AMOUNT']).round(2)
-    child_sum_df['AMOUNT']  = 100 -  child_sum_df['AMOUNT'] # 상위 몇 퍼센트인지 
-    child_sum_df = child_sum_df.sort_values(by=['AMOUNT'], ascending=False).reset_index() # 내림차순으로 정렬
-    child_sum_df.drop(columns=['index'], axis = 1, inplace = True)
-    col = list(child_sum_df.columns)
+    child_sum_df['AMOUNT'] =  ( child_sum_df['AMOUNT'] * 100 / sum_df['AMOUNT'])
+    child_sum_df['AMOUNT']  = (100 -  child_sum_df['AMOUNT']).round(2) # 상위 몇 퍼센트인지 
+    # print(child_sum_df['AMOUNT'])
+    # child_sum_df = child_sum_df.sort_values(by=['CATEGORY'], ascending=True).reset_index() # category 내림차순으로 정렬
+    # child_sum_df.drop(columns=['index'], axis = 1, inplace = True)
+    # col = list(child_sum_df.columns)
     # print(f"=========== {child_id} 상위 ===============") # 년도별 월별..?
     # for i in range(child_sum_df.shape[0]):
     #     print( str(child_sum_df.iloc[i][col[0]]) + " 항목에서 상위 "+ str(child_sum_df.iloc[i][col[1]])+" % 소비" )
     
-    child_sum_df = child_sum_df.set_index('CATEGORY')['AMOUNT'].to_dict()#.to_dict(orient='index')
+    #child_sum_df = child_sum_df.set_index('CATEGORY')['AMOUNT'].to_dict()#.to_dict(orient='index')
     #print(dict(sorted(child_sum_df.items())))
     #print(child_sum_df)
     cursor.close()
-    child_sum_df = dict(sorted(child_sum_df.items()))
+    return_json={}
+    #child_sum_df = dict(sorted(child_sum_df.items(), reverse=True))
+    print("============ child_sum_df =========")
+    print(child_sum_df['AMOUNT'])
+    return child_sum_df['AMOUNT']
 
     return_json['MY_DATA'] =child_sum_df
     return_json['AGE']=age
+    return return_json
 
-    return  JsonResponse( return_json, safe = False)
+    #return  JsonResponse(return_json , safe = False)
 
   
 
@@ -284,11 +303,17 @@ def graph_api_parent(request):
     df = get_df(cursor=cursor)
     
     # dtype에 따른 pie graph 
-    pie_chart = get_pie_chart(df=df, dtype=dtype, isParent = True)
+    pie_chart = get_pie_chart(df=df, dtype=dtype, isParent = True,child_id=child_id)
     stack_chart = get_stack_chart(df=df, dtype=dtype, isParent = True)
+    #ratio_chart = get_ratio_chart(child_id)
+    #pie_chart['RATIO'] = ratio_chart['MY_DATA']
+
     return_json['PIE'] = pie_chart
     return_json['STACK'] = stack_chart
-    
+
+    # return_json['MY_DATA'] = rr['MY_DATA']
+    # return_json['AGE'] = rr['AGE']
+    print(return_json)
     cursor.close()
     return JsonResponse(return_json, safe=False)
 
