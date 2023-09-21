@@ -125,16 +125,9 @@ def get_pie_chart(df:pd, dtype:int,isParent:bool,child_id:int):
     ratio_chart = get_ratio_chart(child_id)
     #print(ratio_chart)
     pie_chart['RATIO'] = ratio_chart#['MY_DATA']
-    print("!!!!!!!!!!!!!!pie_chart!!!!!!!!!!!!!!!!")
-    print(pie_chart)
-
-
-
+  
     pie_chart = pie_chart.to_dict(orient='index')
-    print("==================2=============")
-    print(pie_chart)
-    print("==================3=============")
-    print(dict(sorted(pie_chart.items(), reverse=True)))
+   
     # print("===========pie chart===============")
     # for key, value in pie_chart.items():
     #     print(f"{key}: {value}")
@@ -218,8 +211,8 @@ def get_ratio_chart(child_id):
     # period = request.GET.get('period')
     # return_json = {}
     cursor = connection.cursor()
-    print(child_id)
-
+    #print(child_id)
+    '''아이 나이'''
     cursor.execute("SELECT birthdate FROM Users where id = :id", {"id" : child_id})
     birthdate = cursor.fetchone()[0]
     current_date = datetime.now()
@@ -228,7 +221,14 @@ def get_ratio_chart(child_id):
 
     '''모든 아이들'''
     
-    cursor.execute("SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드')")
+    all_child_query = """
+        SELECT amount, category 
+        FROM account_history 
+        WHERE category not in ('예금' , '적금' , '리워드')
+        AND TO_CHAR(created_date, 'YYYY-MM') BETWEEN :start_date AND :end_date
+        """
+    stdt, enddt = map(str, period.split('~'))
+    cursor.execute(sql=all_child_query,params={"start_date" : stdt , "end_date":enddt})
     query_result = cursor.fetchall()
     columns = [desc[0] for desc in cursor.description]
     all_df = pd.DataFrame(query_result, columns=columns)
@@ -236,6 +236,10 @@ def get_ratio_chart(child_id):
     all_df.reset_index(drop=True, inplace = True)
     sum_df = all_df.groupby(['CATEGORY']).sum().reset_index()
     # mean_df = all_df.groupby(['CATEGORY']).mean().reset_index()
+    # print("============sum_df===========")
+    # print(sum_df)
+
+
     '''특정 자녀'''
     # query = "SELECT amount, category FROM account_history WHERE category not in ('예금' , '적금' , '리워드') and user_id = :child_id" 
     # params = {'child_id': child_id}
@@ -246,8 +250,32 @@ def get_ratio_chart(child_id):
     child_df.dropna(inplace = True)
     child_df.reset_index(drop=True, inplace = True)
     child_sum_df = child_df.groupby(['CATEGORY']).sum().reset_index()
-    child_sum_df['AMOUNT'] =  ( child_sum_df['AMOUNT'] * 100 / sum_df['AMOUNT'])
-    child_sum_df['AMOUNT']  = (100 -  child_sum_df['AMOUNT']).round(2) # 상위 몇 퍼센트인지 
+    # print("============child_sum_df===========")
+    # print(child_sum_df)
+
+    '''상위비율구하기'''
+    merged_data = child_sum_df.merge(sum_df, on='CATEGORY', suffixes=('_data1', '_data2'))
+    # print("===========merged_data===========")
+    # print(merged_data)
+    # AMOUNT_data1를 AMOUNT_data2로 나누어서 새로운 열을 생성
+    merged_data['RESULT'] = merged_data['AMOUNT_data1'] / merged_data['AMOUNT_data2']
+    # print("===========merged_data===========")
+    # print(merged_data)
+    # 필요 없는 열 삭제
+    merged_data.drop(['AMOUNT_data1', 'AMOUNT_data2'], axis=1, inplace=True)
+    merged_data['RESULT']  = (100 -  merged_data['RESULT']*100).round(2) # 상위 몇 퍼센트인지 
+    # print("merged_data!!===========")
+    # print(merged_data)
+
+
+
+
+
+    
+    
+    # child_sum_df['AMOUNT'] =  ( child_sum_df['AMOUNT'] * 100 / sum_df['AMOUNT'])
+    # print(child_sum_df)
+    # child_sum_df['AMOUNT']  = (100 -  child_sum_df['AMOUNT']).round(2) # 상위 몇 퍼센트인지 
     # print(child_sum_df['AMOUNT'])
     # child_sum_df = child_sum_df.sort_values(by=['CATEGORY'], ascending=True).reset_index() # category 내림차순으로 정렬
     # child_sum_df.drop(columns=['index'], axis = 1, inplace = True)
@@ -260,17 +288,13 @@ def get_ratio_chart(child_id):
     #print(dict(sorted(child_sum_df.items())))
     #print(child_sum_df)
     cursor.close()
-    return_json={}
+    #return_json={}
     #child_sum_df = dict(sorted(child_sum_df.items(), reverse=True))
-    print("============ child_sum_df =========")
-    print(child_sum_df['AMOUNT'])
+    #print("============ child_sum_df =========")
+    #print(child_sum_df['AMOUNT'])
+    return merged_data['RESULT']
     return child_sum_df['AMOUNT']
 
-    return_json['MY_DATA'] =child_sum_df
-    return_json['AGE']=age
-    return return_json
-
-    #return  JsonResponse(return_json , safe = False)
 
   
 
@@ -313,7 +337,7 @@ def graph_api_parent(request):
 
     # return_json['MY_DATA'] = rr['MY_DATA']
     # return_json['AGE'] = rr['AGE']
-    print(return_json)
+    #print(return_json)
     cursor.close()
     return JsonResponse(return_json, safe=False)
 
