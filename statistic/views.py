@@ -142,7 +142,15 @@ def get_stack_chart(df:pd, dtype:int,isParent:bool):
         year_stack_chart['IS_DEPOSIT'] = year_stack_chart['IS_DEPOSIT'].replace({0: '소비', 1: '예금'})
         
         if(isParent):   
-            year_stack_chart['PERCENTAGE']  = (year_stack_chart['AMOUNT'] /year_stack_chart['AMOUNT'].sum() * 100).round(2)
+            #year_stack_chart = year_stack_chart.groupby(['YEAR',  'IS_DEPOSIT'])['AMOUNT'].sum().reset_index()
+            # year_stack_chart['PERCENTAGE']  = (year_stack_chart['AMOUNT'] /year_stack_chart['AMOUNT'].sum() * 100).round(2)
+            # YEAR 및 MONTH로 그룹화하고 각 IS_DEPOSIT의 AMOUNT 합산값을 가져옴
+            total_amounts = year_stack_chart.groupby(['YEAR'])['AMOUNT'].transform('sum')
+
+            # AMOUNT를 해당 월의 총 AMOUNT로 나누어 비율을 구함
+            year_stack_chart['PERCENTAGE'] = (year_stack_chart['AMOUNT'] / total_amounts * 100).round(2)
+            
+            
             year_stack_chart.drop(['AMOUNT'], axis=1, inplace=True)
             year_stack_chart['PERCENTAGE'] = year_stack_chart['PERCENTAGE'].apply(lambda x: f'{x:.2f}')
             
