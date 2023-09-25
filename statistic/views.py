@@ -311,7 +311,7 @@ def get_ratio_chart(child_id):
 
   
 
-def graph_api_parent(request):
+def get_graph_parent(request):
     global period
 
     return_json = {}
